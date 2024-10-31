@@ -1,0 +1,49 @@
+services:
+  norsk:
+    image: norskvideo/norsk:v1.0.390-main
+    command: --license-file /root/norsk_license.json
+    volumes:
+      - ./support/norsk_license.json:/root/norsk_license.json
+      - ./mnt:/mnt
+    user: ${DUID}:${DGID}
+    ports:
+      # SRT input
+      - 5001:5001/udp
+
+      # GRPC access for app (only needed if not running app in docker)
+      - 6790:6790
+
+      # Access to visualiser
+      - 6791:6791
+
+      # Access to endpoints (hls/etc)
+      - 8080:8080
+
+    healthcheck:
+      test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:6791"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+    # Un-comment these lines to use Nvidia in the application
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+  app:
+    image: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: ${DUID}:${DGID}
+    volumes:
+      - ./mnt:/mnt
+    working_dir: /usr/src/app/
+    environment:
+      NORSK_HOST: norsk
+    command: npm run start  
+
